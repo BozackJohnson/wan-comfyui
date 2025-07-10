@@ -37,16 +37,9 @@ done
 NETWORK_VOLUME="/workspace"
 URL="http://127.0.0.1:8188"
 
-# Check if NETWORK_VOLUME exists; if not, use root directory instead
-if [ ! -d "$NETWORK_VOLUME" ]; then
-    echo "NETWORK_VOLUME directory '$NETWORK_VOLUME' does not exist. You are NOT using a network volume. Setting NETWORK_VOLUME to '/' (root directory)."
-    NETWORK_VOLUME="/"
-    echo "NETWORK_VOLUME directory doesn't exist. Starting JupyterLab on root directory..."
-    jupyter-lab --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token='' --NotebookApp.password='' --ServerApp.allow_origin='*' --ServerApp.allow_credentials=True --notebook-dir=/ &
-else
-    echo "NETWORK_VOLUME directory exists. Starting JupyterLab..."
-    jupyter-lab --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token='' --NotebookApp.password='' --ServerApp.allow_origin='*' --ServerApp.allow_credentials=True --notebook-dir=/workspace &
-fi
+# Start standard JupyterLab on port 8888, pointing to the persistent workspace directory
+echo "Starting standard JupyterLab on port 8888..."
+jupyter-lab --ip=0.0.0.0 --port=8888 --allow-root --no-browser --notebook-dir=/workspace &
 
 COMFYUI_DIR="$NETWORK_VOLUME/ComfyUI"
 WORKFLOW_DIR="$NETWORK_VOLUME/ComfyUI/user/default/workflows"
@@ -213,69 +206,4 @@ download_model "https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan2_1_
 download_model "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors" "$VAE_DIR/wan_2.1_vae.safetensors"
 
 # Wait for all background aria2c processes to complete
-echo "Waiting for all model downloads to complete..."
-while pgrep -x "aria2c" > /dev/null; do
-    echo "🔽 Model Downloads still in progress..."
-    sleep 5
-done
-echo "✅ All models downloaded successfully!"
-
-# ===============================================
-# 5. Final Setup and Launch
-# ===============================================
-
-# Wait for background pip and build jobs
-echo "⏳ Waiting for custom node package installations to complete..."
-wait $KJ_PID
-KJ_STATUS=$?
-wait $WAN_PID
-WAN_STATUS=$?
-
-if [ $KJ_STATUS -ne 0 ]; then
-    echo "❌ KJNodes install failed."
-    exit 1
-fi
-if [ $WAN_STATUS -ne 0 ]; then
-    echo "❌ WanVideoWrapper install failed."
-    exit 1
-fi
-echo "✅ KJNodes and WanVideoWrapper installs complete."
-
-# Wait for the SageAttention build to complete
-echo "⏳ Waiting for SageAttention build to complete... (this can take around 5 minutes)"
-while kill -0 "$BUILD_PID" 2>/dev/null; do
-    echo "🛠️ Building SageAttention in progress..."
-    sleep 10
-done
-echo "✅ SageAttention build complete."
-
-# Renaming loras downloaded as zip files
-echo "Renaming loras downloaded as zip files to safetensors files"
-cd $LORAS_DIR || exit 1
-for file in *.zip; do
-    if [ -f "$file" ]; then
-        echo "Renaming $file to ${file%.zip}.safetensors"
-        mv "$file" "${file%.zip}.safetensors"
-    fi
-done
-
-# Check and copy workflows
-echo "Checking and copying workflow..."
-SOURCE_DIR="/comfyui-wan/workflows"
-for file in "$SOURCE_DIR"/*; do
-    if [ -f "$file" ]; then
-        dest_file="$WORKFLOW_DIR/$(basename "$file")"
-        if [[ -e "$dest_file" ]]; then
-            echo "File already exists in destination. Deleting: $file"
-            rm -f "$file"
-        else
-            echo "Moving: $file to $WORKFLOW_DIR"
-            mv "$file" "$WORKFLOW_DIR"
-        fi
-    fi
-done
-
-# Configure ComfyUI-Manager
-if [ "$change_preview_method" == "true" ]; then
-    echo "Updating default preview method via config.ini..."
-    CONFIG_PATH="$NETWORK_VOLUME/ComfyUI/user/default/ComfyUI-Manager"
+echo "Waiting for all model downloads to complete
