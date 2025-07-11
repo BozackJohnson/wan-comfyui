@@ -5,6 +5,9 @@
 # Set -x to print every command that is executed. This is for debugging.
 set -x
 
+# Get the directory of the script itself, to handle relative paths correctly
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Use libtcmalloc for better memory management
 TCMALLOC="$(ldconfig -p | grep -Po "libtcmalloc.so.\d" | head -n 1)"
 export LD_PRELOAD="${TCMALLOC}"
@@ -14,12 +17,12 @@ export LD_PRELOAD="${TCMALLOC}"
 # ===============================================
 
 # This is in case there's any special installs or overrides that needs to occur when starting the machine before starting ComfyUI
-if [ -f "/workspace/additional_params.sh" ]; then
-    chmod +x /workspace/additional_params.sh
+if [ -f "$SCRIPT_DIR/additional_params.sh" ]; then
+    chmod +x "$SCRIPT_DIR/additional_params.sh"
     echo "Executing additional_params.sh..."
-    /workspace/additional_params.sh
+    "$SCRIPT_DIR/additional_params.sh"
 else
-    echo "additional_params.sh not found in /workspace. Skipping..."
+    echo "additional_params.sh not found in $SCRIPT_DIR. Skipping..."
 fi
 
 # Check for and install essential command-line tools with sudo for elevated privileges
@@ -39,7 +42,6 @@ done
 # Set the network volume path
 NETWORK_VOLUME="/workspace"
 URL="http://127.0.0.1:8188"
-REPOSITORY_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
 # Start standard JupyterLab on port 8888, pointing to the persistent workspace directory
 echo "Starting standard JupyterLab on port 8888..."
@@ -49,7 +51,7 @@ COMFYUI_DIR="$NETWORK_VOLUME/ComfyUI"
 WORKFLOW_DIR="$NETWORK_VOLUME/ComfyUI/user/default/workflows"
 CUSTOM_NODES_DIR="$NETWORK_VOLUME/ComfyUI/custom_nodes"
 
-# Move ComfyUI to the network volume if it exists in the root
+# The Dockerfile already clones ComfyUI to /ComfyUI. We simply move it to the persistent volume.
 if [ ! -d "$COMFYUI_DIR" ]; then
     mv /ComfyUI "$COMFYUI_DIR"
 else
