@@ -39,5 +39,8 @@ RUN pip install jupyterlab
 RUN mkdir -p /workspace
 
 # Set the command to run our start script when the container is started
+CMD ["/bin/bash"]
+
+# Set the command to run our start script when the container is started
 # This assumes the start script is copied into the image later, or cloned via a volume.
 CMD ["/bin/bash"]
